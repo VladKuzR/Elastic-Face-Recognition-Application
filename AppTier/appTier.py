@@ -10,7 +10,9 @@ SQS = boto3.client('sqs')
 def handle_request():
     # Recieving message
     received_message = SQS.receive_message(
-        QueueUrl = 'https://sqs.us-east-1.amazonaws.com/533267346617/1230868550-req-queue'
+        QueueUrl = 'https://sqs.us-east-1.amazonaws.com/533267346617/1230868550-req-queue',
+        MaxNumberOfMessages=1,
+        #VisibilityTimeout=30
     )
     try:
         # Deleting Message
@@ -42,6 +44,7 @@ def handle_request():
             QueueUrl = 'https://sqs.us-east-1.amazonaws.com/533267346617/1230868550-resp-queue',
             MessageBody = ']eqgbplf'.join([filename.split('.')[0], recognition_result])
         )
+        print('Message Pushed', ']eqgbplf'.join([filename.split('.')[0], recognition_result]))
 
     except:
         print('error')
@@ -54,5 +57,5 @@ while True:
     if (int(response['Attributes']['ApproximateNumberOfMessages'])) >= 1:
         handle_request()
     
-    time.sleep(.1)
-    print('хуй')
+    time.sleep(0.5)
+    print('awaiting')
