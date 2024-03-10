@@ -9,8 +9,45 @@ app = Flask(__name__)
 
 request_queue = Queue()
 prediction_object = {}
-
+SQS = boto3.client('sqs')
 lock = threading.Lock()
+EC2 = boto3.client('ec2')
+
+def start_instances(instance_ids, queue_size):
+    max_instances = min(len(instance_ids), queue_size)
+    for instance_id in instance_ids[:max_instances]:
+        response = EC2.start_instances(InstanceIds=[instance_id])
+        time.sleep(2) 
+
+def stop_instances(instance_ids, queue_size):
+    max_instances = min(len(instance_ids), queue_size)
+
+    for instance_id in instance_ids[:max_instances]:
+        response = EC2.stop_instances(InstanceIds=[instance_id])
+        time.sleep(10) 
+
+async def elastic_controller(queue_size):
+    ('Performing Elastic Scaling')
+    response = EC2.describe_instances(
+            Filters=[
+                {
+                    'Name': 'instance.group-id',
+                    'Values': [
+                        'sg-0a831a2b74edf3845',
+                    ]
+                },
+            ],
+        )
+    instances_present = []
+    for i in range(len(response['Reservations'])):
+            instances_present.append(response['Reservations'][i]['Instances'][0]['InstanceId'])
+
+    queue_size = request_queue.qsize()
+    print('I work and queue size is ', queue_size)
+    start_instances(instances_present, queue_size)
+    #stop_instances(instances_present, queue_size)
+    time.sleep(1)
+
 
 @app.route('/', methods=['POST'])
 def send_to_appTier():
@@ -18,6 +55,8 @@ def send_to_appTier():
         return "No file provided", 400
     image = request.files['inputFile'].read()
     filename = request.files['inputFile'].filename
+    
+
     print(filename)
 
     
@@ -25,7 +64,7 @@ def send_to_appTier():
     print("-----------Вся Очередь",list(request_queue.queue))
 
     # Используем блокировку для синхронизации
-    SQS = boto3.client('sqs')
+
 
     readyToSendImage = '[eqgbplf]'.join([filename, base64.b64encode(image).decode('utf-8')])
 
@@ -34,9 +73,9 @@ def send_to_appTier():
         MessageBody=readyToSendImage,
         )
     print(response)
-    
+    request_queue.put(filename.split('.')[0])
     with lock:
-        request_queue.put(filename.split('.')[0])
+        
         print('siiiiiiiiiize', request_queue.qsize())    
         
         while True:
@@ -79,15 +118,8 @@ def send_to_appTier():
                     del prediction_object[first_element]
                     return f'{request_queue.get()}:{prediction}'
 
-            time.sleep(0.5)
-                    
-                    # Количество сообщений становится равным нулю почему-то
+            time.sleep(0.5)       
 
-    
-        
-
-def elastic_controller():
-    return False
 
 if __name__ == '__main__':
     app.run(debug=True, threaded = True)
