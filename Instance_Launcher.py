@@ -6,14 +6,19 @@ def create_instance(name = 'app-tier-instance-0', type = "t2.micro", security_sr
     conn = ec2.run_instances(InstanceType=type,
                             MaxCount=1,
                             MinCount=1,
-                            ImageId="ami-00ddb0e5626798373", 
+                            ImageId="ami-01066273252204cd9", 
                             KeyName="MyNewKayPair",
                             SecurityGroupIds=[security_sroup_id], 
                             TagSpecifications=[{'ResourceType':'instance',
                                 'Tags': [{
                                     'Key': 'Name',
-                                    'Value': 'app-tier-instance-0' }]}])
+                                    'Value': name }]}],
+                            UserData='#!/bin/bash\npython3 /home/ubuntu/AppTier/appTier.py')
 
     print(conn)
 
-create_instance(security_sroup_id = 'sg-0a831a2b74edf3845')
+for i in range(19):
+    if i<10:
+        create_instance(name = f'app-tier-instance-0{i}', security_sroup_id = 'sg-0a831a2b74edf3845')
+    else:
+        create_instance(name = f'app-tier-instance-{i}', security_sroup_id = 'sg-0a831a2b74edf3845')

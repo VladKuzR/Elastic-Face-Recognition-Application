@@ -76,6 +76,7 @@ def send_to_appTier():
                     prediction = prediction_object[first_element]
                     print("-----------Вся Очередь----------", list(request_queue.queue))
                     print('----------Все Предсказания-------------', prediction_object)
+                    del prediction_object[first_element]
                     return f'{request_queue.get()}:{prediction}'
 
             time.sleep(0.5)
@@ -89,4 +90,4 @@ def elastic_controller():
     return False
 
 if __name__ == '__main__':
-    app.run(debug=True, threaded = False)
+    app.run(debug=True, threaded = True)
