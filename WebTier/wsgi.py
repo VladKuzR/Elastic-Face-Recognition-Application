@@ -1,4 +1,4 @@
-from app import app
+from webTier import app
 
 if __name__ == "__main__":
     app.run()

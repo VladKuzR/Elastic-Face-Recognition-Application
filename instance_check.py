@@ -6,7 +6,8 @@ import time
 from queue import Queue
 
 EC2 = boto3.client('ec2')
-
+stopped_instances = Queue()
+running_instances = Queue()
 
 response = EC2.describe_instances(
             Filters=[

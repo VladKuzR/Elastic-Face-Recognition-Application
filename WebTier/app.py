@@ -4,6 +4,8 @@ import boto3
 import threading
 import time
 from queue import Queue
+import asyncio
+import pickle
 
 app = Flask(__name__)
 
@@ -13,40 +15,6 @@ SQS = boto3.client('sqs')
 lock = threading.Lock()
 EC2 = boto3.client('ec2')
 
-def start_instances(instance_ids, queue_size):
-    max_instances = min(len(instance_ids), queue_size)
-    for instance_id in instance_ids[:max_instances]:
-        response = EC2.start_instances(InstanceIds=[instance_id])
-        time.sleep(2) 
-
-def stop_instances(instance_ids, queue_size):
-    max_instances = min(len(instance_ids), queue_size)
-
-    for instance_id in instance_ids[:max_instances]:
-        response = EC2.stop_instances(InstanceIds=[instance_id])
-        time.sleep(10) 
-
-async def elastic_controller(queue_size):
-    ('Performing Elastic Scaling')
-    response = EC2.describe_instances(
-            Filters=[
-                {
-                    'Name': 'instance.group-id',
-                    'Values': [
-                        'sg-0a831a2b74edf3845',
-                    ]
-                },
-            ],
-        )
-    instances_present = []
-    for i in range(len(response['Reservations'])):
-            instances_present.append(response['Reservations'][i]['Instances'][0]['InstanceId'])
-
-    queue_size = request_queue.qsize()
-    print('I work and queue size is ', queue_size)
-    start_instances(instances_present, queue_size)
-    #stop_instances(instances_present, queue_size)
-    time.sleep(1)
 
 
 @app.route('/', methods=['POST'])
@@ -74,22 +42,18 @@ def send_to_appTier():
         )
     print(response)
     request_queue.put(filename.split('.')[0])
+
     with lock:
-        
         print('siiiiiiiiiize', request_queue.qsize())    
         
         while True:
-            """ response = SQS.get_queue_attributes(
-                QueueUrl='https://sqs.us-east-1.amazonaws.com/533267346617/1230868550-resp-queue',
-                AttributeNames=['ApproximateNumberOfMessages']
-            )
-            print('IMPORTANT!!!!!', int(response['Attributes']['ApproximateNumberOfMessages']))
-            # if (int(response['Attributes']['ApproximateNumberOfMessages'])) >= 1: """
-            
+            with open('queue_data.pkl', 'wb') as f:
+                pickle.dump(request_queue.qsize()-1, f)
+
             received_message = SQS.receive_message(
                 QueueUrl='https://sqs.us-east-1.amazonaws.com/533267346617/1230868550-resp-queue',
                 VisibilityTimeout=0,
-                MaxNumberOfMessages=1
+                MaxNumberOfMessages=1,
             )
             print('Message Reception')
             try:
@@ -104,8 +68,7 @@ def send_to_appTier():
                     prediction_object[filename] = prediction
                     print('prediction is', prediction)
                     print('-----------------------', prediction_object)
-                
-
+                    
             except:
                 print('error of message reception')
 
@@ -113,12 +76,16 @@ def send_to_appTier():
                 first_element = request_queue.queue[0]
                 if first_element in prediction_object:
                     prediction = prediction_object[first_element]
+                    filename = request_queue.get()
                     print("-----------Вся Очередь----------", list(request_queue.queue))
                     print('----------Все Предсказания-------------', prediction_object)
-                    del prediction_object[first_element]
-                    return f'{request_queue.get()}:{prediction}'
+                    if request_queue.empty():
+                        prediction_object.clear()
+                    return f'{filename}:{prediction}'
+            else:
+                time.sleep(3) 
+            time.sleep(0.1)   
 
-            time.sleep(0.5)       
 
 
 if __name__ == '__main__':

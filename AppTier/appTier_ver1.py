@@ -11,7 +11,6 @@ def handle_request():
     received_message = SQS.receive_message(
         QueueUrl = 'https://sqs.us-east-1.amazonaws.com/533267346617/1230868550-req-queue',
         MaxNumberOfMessages=1,
-        MessageAttributeNames=['All'],
         WaitTimeSeconds = 20, 
         VisibilityTimeout = 0
     )
@@ -21,10 +20,11 @@ def handle_request():
             QueueUrl='https://sqs.us-east-1.amazonaws.com/533267346617/1230868550-req-queue',
             ReceiptHandle=handler
         )
-
-        filename = received_message['Messages'][0]['MessageAttributes']['filename']['StringValue']
-        image_string = received_message['Messages'][0]['Body']
-        unique_id = received_message['Messages'][0]['MessageAttributes']['UUID']['StringValue']
+    
+        received_string = received_message['Messages'][0]['Body']
+        received_array = received_string.split('[eqgbplf]')
+        filename = received_array[0]
+        image_string = received_array[1]
         decoded_image = BytesIO(base64.b64decode(image_string))
 
         recognition_result = fr.face_match(decoded_image, '/home/devcontainers/Cloud_Computing/AppTier/data.pt')[0]
@@ -35,16 +35,7 @@ def handle_request():
 
         response = SQS.send_message(
             QueueUrl = 'https://sqs.us-east-1.amazonaws.com/533267346617/1230868550-resp-queue',
-            MessageBody = recognition_result,
-            MessageAttributes={
-            'filename': {
-                'StringValue': filename,
-                'DataType': 'String'
-            },
-            'UUID': {
-                'StringValue': unique_id,
-                'DataType': 'String'
-            }}
+            MessageBody = ']eqgbplf'.join([filename.split('.')[0], recognition_result])
         )
         print(response)
 
