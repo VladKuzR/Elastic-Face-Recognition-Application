@@ -1,3 +1,0 @@
-
-python3 workload_generator.py --num_request 1000 --url http://0.0.0.0:8000/ --image_folder /home/ubuntu/face_recognition_app/Flask/Recognition/face_images_1000/ --prediction_file /home/ubuntu/face_recognition_app/Flask/Recognition/classification_results.csv
-scp -i ~/.aws/MyNewKayPair.pem -r /home/devcontainers/Cloud_Computing/AppTier/* ubuntu@ec2-35-173-139-141.compute-1.amazonaws.com:/home/ubuntu
